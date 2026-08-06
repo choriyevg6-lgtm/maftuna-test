@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Maftuna uchun test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: linear-gradient(-45deg, #ff6b9d, #c084fc, #ff9a9e, #a78bfa);
+    background-size: 400% 400%;
+    animation: bgShift 14s ease infinite;
+  }
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .stage {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: rgba(255,255,255,0.97);
+    border-radius: 24px;
+    max-width: 480px;
+    width: 100%;
+    padding: 34px 26px;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.25);
+    text-align: center;
+    animation: pop 0.5s ease;
+  }
+  @keyframes pop {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .hidden { display: none !important; }
+  h1 {
+    color: #d6336c;
+    font-size: clamp(22px, 5vw, 28px);
+    margin-bottom: 12px;
+  }
+  .sub {
+    color: #6b7280;
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 26px;
+  }
+  .heart { font-size: 40px; margin-bottom: 10px; }
+  button.primary {
+    border: none;
+    outline: none;
+    background: linear-gradient(135deg, #ff6b9d, #c084fc);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 600;
+    padding: 14px 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(214,51,108,0.35);
+    transition: transform 0.15s ease;
+  }
+  button.primary:active { transform: scale(0.95); }
+  button.primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .progress-wrap {
+    height: 8px;
+    background: #f3d9e6;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b9d, #c084fc);
+    width: 0%;
+    transition: width 0.35s ease;
+  }
+  .qcount {
+    color: #9ca3af;
+    font-size: 13px;
+    margin-bottom: 6px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .question {
+    color: #1f2937;
+    font-size: clamp(18px, 4.6vw, 21px);
+    font-weight: 600;
+    margin-bottom: 22px;
+    line-height: 1.4;
+  }
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .opt {
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 2px solid #f0d9e6;
+    background: #fff;
+    color: #374151;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .opt:hover { border-color: #ff9ac0; }
+  .opt.selected {
+    border-color: #d6336c;
+    background: #fff0f6;
+    font-weight: 600;
+    color: #d6336c;
+  }
+  .nav-row {
+    display: flex;
+    justify-content: center;
+  }
+  /* Results */
+  .score-big {
+    font-size: 44px;
+    font-weight: 800;
+    color: #d6336c;
+    margin-bottom: 4px;
+  }
+  .score-label {
+    color: #6b7280;
+    margin-bottom: 22px;
+    font-size: 15px;
+  }
+  .result-list {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+  .result-item {
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    border-left: 5px solid #ccc;
+  }
+  .result-item.correct {
+    background: #f0fdf4;
+    border-left-color: #22c55e;
+  }
+  .result-item.wrong {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+  }
+  .result-item .qtext { font-weight: 600; color: #1f2937; margin-bottom: 4px; }
+  .result-item .ans { color: #4b5563; }
+  .result-item .ans.wrong-ans { color: #dc2626; }
+  .result-item .ans.right-ans { color: #16a34a; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <!-- INTRO -->
+  <div class="card" id="intro">
+    <div class="heart">💗</div>
+    <h1>Maftuna uchun maxsus test</h1>
+    <button class="primary" onclick="startQuiz()">Testni boshlash</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="card hidden" id="quiz">
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="qcount" id="qcount"></div>
+    <div class="question" id="questionText"></div>
+    <div class="options" id="optionsWrap"></div>
+    <div class="nav-row">
+      <button class="primary" id="nextBtn" disabled onclick="nextQuestion()">Keyingisi</button>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card hidden" id="result">
+    <div class="heart">🎉</div>
+    <h1>Natija tayyor!</h1>
+    <div class="score-big" id="scoreBig"></div>
+    <div class="score-label" id="scoreLabel"></div>
+    <div class="result-list" id="resultList"></div>
+    <button class="primary" onclick="restartQuiz()">Qayta urinish</button>
+  </div>
+</div>
+
+<script>
+const questions = [
+  {
+    q: "12 × 8 = ?",
+    options: ["96", "86", "106", "88"],
+    correct: 0
+  },
+  {
+    q: "3x + 5 = 20 bo'lsa, x nechaga teng?",
+    options: ["4", "5", "6", "3"],
+    correct: 1
+  },
+  {
+    q: "To'g'ri to'rtburchakning yuzi 48 sm², eni 6 sm. Uzunligi nechaga teng?",
+    options: ["7 sm", "9 sm", "8 sm", "6 sm"],
+    correct: 2
+  },
+  {
+    q: "200 ning 15 foizi nechaga teng?",
+    options: ["25", "35", "20", "30"],
+    correct: 3
+  },
+  {
+    q: "Ikki sonning yig'indisi 24, ayirmasi 6. Katta son nechaga teng?",
+    options: ["14", "15", "16", "13"],
+    correct: 1
+  },
+  {
+    q: "7² − 3² = ?",
+    options: ["42", "38", "40", "44"],
+    correct: 2
+  },
+  {
+    q: "Uchburchakning ichki burchaklari yig'indisi necha gradus?",
+    options: ["360°", "90°", "270°", "180°"],
+    correct: 3
+  },
+  {
+    q: "2,5 soat necha daqiqaga teng?",
+    options: ["140", "160", "150", "130"],
+    correct: 2
+  }
+];
+
+let current = 0;
+let selected = null;
+let answers = [];
+
+function startQuiz(){
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('quiz').classList.remove('hidden');
+  current = 0;
+  answers = [];
+  selected = null;
+  renderQuestion();
+}
+
+function renderQuestion(){
+  const q = questions[current];
+  selected = null;
+  document.getElementById('nextBtn').disabled = true;
+  document.getElementById('nextBtn').textContent = current === questions.length - 1 ? "Yakunlash" : "Keyingisi";
+  document.getElementById('qcount').textContent = `Savol ${current + 1} / ${questions.length}`;
+  document.getElementById('progressBar').style.width = ((current) / questions.length * 100) + '%';
+  document.getElementById('questionText').textContent = q.q;
+
+  const wrap = document.getElementById('optionsWrap');
+  wrap.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const div = document.createElement('div');
+    div.className = 'opt';
+    div.textContent = opt;
+    div.onclick = () => selectOption(i, div);
+    wrap.appendChild(div);
+  });
+}
+
+function selectOption(index, el){
+  selected = index;
+  document.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('nextBtn').disabled = false;
+}
+
+function nextQuestion(){
+  if (selected === null) return;
+  answers.push(selected);
+
+  if (current < questions.length - 1){
+    current++;
+    renderQuestion();
+  } else {
+    document.getElementById('progressBar').style.width = '100%';
+    showResult();
+  }
+}
+
+function showResult(){
+  document.getElementById('quiz').classList.add('hidden');
+  document.getElementById('result').classList.remove('hidden');
+
+  let score = 0;
+  const listEl = document.getElementById('resultList');
+  listEl.innerHTML = '';
+
+  questions.forEach((q, i) => {
+    const userIdx = answers[i];
+    const isCorrect = userIdx === q.correct;
+    if (isCorrect) score++;
+    if (isCorrect) return;
+
+    const item = document.createElement('div');
+    item.className = 'result-item wrong';
+    item.innerHTML = `
+      <div class="qtext">${i + 1}. ${q.q}</div>
+      <div class="ans wrong-ans">
+        ❌ Sizning javobingiz: ${q.options[userIdx]}
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+
+  document.getElementById('scoreBig').textContent = score + ' / ' + questions.length;
+  let label;
+  if (score === questions.length) label = "Zo'r natija! Barcha savollarga to'g'ri javob berdingiz 👏";
+  else if (score >= questions.length * 0.6) label = "Yaxshi natija! Yana biroz mashq qilsangiz a'lo bo'ladi 🌟";
+  else label = "Hech qisi yo'q, yana urinib ko'ring — siz uddalaysiz 💪";
+  document.getElementById('scoreLabel').textContent = label;
+}
+
+function restartQuiz(){
+  document.getElementById('result').classList.add('hidden');
+  document.getElementById('intro').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
