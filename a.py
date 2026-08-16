@@ -2,6 +2,7 @@ import os
 import sqlite3
 import threading
 import random
+import time
 from datetime import datetime, timedelta
 
 import telebot
@@ -11,7 +12,7 @@ from telebot import types
 # SOZLAMALAR
 # =============================================================
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8832515998:AAHoDmIc97KzOKOj65IFowqGPo9KAUQpHVY")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8631464111:AAFVtta4xaqUIx0RgdqbpUBkrNJxhPOv2IY")
 
 # Bosh admin(lar) — botni to'liq nazorat qiladi, shaffof ishlaydi
 ADMIN_IDS = {8243491785}  # <-- O'ZGARTIRING!
@@ -1637,11 +1638,73 @@ def handle_my_chat_member(update):
 
 
 # =============================================================
+# RENDER (yoki shunga o'xshash) BEPUL XOSTING UCHUN "UYQUGA KETMASLIK"
+# =============================================================
+# Render'ning bepul tarifi 15 daqiqa tashqi HTTP so'rov kelmasa serverni
+# "uyqu"ga o'tkazadi. Buning oldini olish uchun kichik Flask veb-server
+# ochamiz va bot o'zi-o'ziga (o'zining ochiq domeniga) davriy ravishda
+# HTTP so'rov yuborib turadi — bu Render nazarida "tashqaridan kirish"
+# hisoblanadi va server uxlab qolmaydi.
+#
+# Bu qism ixtiyoriy: agar flask/requests o'rnatilmagan bo'lsa (masalan,
+# kompyuteringizda sinov qilayotganda), botning asosiy ishlashiga hech
+# qanday xalaqit bermaydi — shunchaki bu funksiya o'chirilgan bo'ladi.
+
+KEEP_ALIVE_PORT = int(os.environ.get("PORT", 8080))
+KEEP_ALIVE_URL = os.environ.get("RENDER_EXTERNAL_URL")  # Render buni avtomatik beradi
+
+
+def start_keep_alive_server():
+    try:
+        from flask import Flask
+    except ImportError:
+        print("[keep-alive] 'flask' o'rnatilmagan, veb-server ishga tushmaydi (lokal ishga tushirishda bu normal).")
+        return
+
+    app = Flask("keep_alive")
+
+    @app.route("/")
+    def home():
+        return "Bot tirik!"
+
+    def run_flask():
+        app.run(host="0.0.0.0", port=KEEP_ALIVE_PORT)
+
+    threading.Thread(target=run_flask, daemon=True).start()
+    print(f"[keep-alive] Veb-server {KEEP_ALIVE_PORT}-portda ishga tushdi.")
+
+
+def start_self_ping():
+    if not KEEP_ALIVE_URL:
+        print("[keep-alive] RENDER_EXTERNAL_URL topilmadi, self-ping o'chirilgan (lokalda bu normal).")
+        return
+    try:
+        import requests
+    except ImportError:
+        print("[keep-alive] 'requests' o'rnatilmagan, self-ping ishlamaydi.")
+        return
+
+    def ping_loop():
+        while True:
+            time.sleep(600)  # har 10 daqiqada
+            try:
+                requests.get(KEEP_ALIVE_URL, timeout=10)
+                print("[keep-alive] Self-ping muvaffaqiyatli.")
+            except Exception as e:
+                print(f"[keep-alive] Ping xatosi: {e}")
+
+    threading.Thread(target=ping_loop, daemon=True).start()
+    print(f"[keep-alive] Self-ping ishga tushdi -> {KEEP_ALIVE_URL}")
+
+
+# =============================================================
 # ISHGA TUSHIRISH
 # =============================================================
 
 if __name__ == "__main__":
     init_db()
     BOT_ID = bot.get_me().id
+    start_keep_alive_server()
+    start_self_ping()
     print("Bot ishga tushdi...")
     bot.infinity_polling(skip_pending=True)
